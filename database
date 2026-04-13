@@ -1,0 +1,154 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+   android:orientation="vertical"
+   android:padding="16dp"
+   android:layout_width="match_parent"
+   android:layout_height="match_parent">
+ 
+   <EditText
+       android:id="@+id/etId"
+       android:hint="Student ID"
+       android:inputType="number"/>
+ 
+   <EditText
+       android:id="@+id/etName"
+       android:hint="Student Name"/>
+ 
+   <EditText
+       android:id="@+id/etMarks"
+       android:hint="Marks"
+       android:inputType="number"/>
+ 
+   <Button
+       android:id="@+id/btnInsert"
+       android:text="Insert"/>
+ 
+   <Button
+       android:id="@+id/btnUpdate"
+       android:text="Update"/>
+ 
+   <Button
+       android:id="@+id/btnDelete"
+       android:text="Delete"/>
+ 
+   <Button
+       android:id="@+id/btnView"
+       android:text="View Data"/>
+ 
+</LinearLayout>
+ 
+DATABSE HELPER CLASS
+import android.content.ContentValues
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+ 
+class DBHelper(context: Context) : SQLiteOpenHelper(context, "StudentDB", null, 1) {
+ 
+   override fun onCreate(db: SQLiteDatabase) {
+       db.execSQL("CREATE TABLE students(id INTEGER PRIMARY KEY, name TEXT, marks INTEGER)")
+   }
+ 
+   override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+       db.execSQL("DROP TABLE IF EXISTS students")
+       onCreate(db)
+   }
+ 
+   fun insertData(id: Int, name: String, marks: Int): Boolean {
+       val db = writableDatabase
+       val cv = ContentValues()
+       cv.put("id", id)
+       cv.put("name", name)
+       cv.put("marks", marks)
+       val result = db.insert("students", null, cv)
+       return result != -1L
+   }
+ 
+   fun updateData(id: Int, name: String, marks: Int): Boolean {
+       val db = writableDatabase
+       val cv = ContentValues()
+       cv.put("name", name)
+       cv.put("marks", marks)
+       val result = db.update("students", cv, "id=?", arrayOf(id.toString()))
+       return result > 0
+   }
+ 
+   fun deleteData(id: Int): Boolean {
+       val db = writableDatabase
+       val result = db.delete("students", "id=?", arrayOf(id.toString()))
+       return result > 0
+   }
+ 
+   fun getAllData(): String {
+       val db = readableDatabase
+       val cursor = db.rawQuery("SELECT * FROM students", null)
+       var data = ""
+ 
+       while (cursor.moveToNext()) {
+           data += "ID: ${cursor.getInt(0)}\n"
+           data += "Name: ${cursor.getString(1)}\n"
+           data += "Marks: ${cursor.getInt(2)}\n\n"
+       }
+       cursor.close()
+       return data
+   }
+}
+ 
+MAINACTIVITY CLASS
+import android.os.Bundle
+import android.widget.*
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+ 
+class MainActivity : AppCompatActivity() {
+ 
+   lateinit var db: DBHelper
+ 
+   override fun onCreate(savedInstanceState: Bundle?) {
+       super.onCreate(savedInstanceState)
+       setContentView(R.layout.activity_main)
+ 
+       db = DBHelper(this)
+ 
+       val etId = findViewById<EditText>(R.id.etId)
+       val etName = findViewById<EditText>(R.id.etName)
+       val etMarks = findViewById<EditText>(R.id.etMarks)
+ 
+       val btnInsert = findViewById<Button>(R.id.btnInsert)
+       val btnUpdate = findViewById<Button>(R.id.btnUpdate)
+       val btnDelete = findViewById<Button>(R.id.btnDelete)
+       val btnView = findViewById<Button>(R.id.btnView)
+ 
+       btnInsert.setOnClickListener {
+           val success = db.insertData(
+               etId.text.toString().toInt(),
+               etName.text.toString(),
+               etMarks.text.toString().toInt()
+           )
+           Toast.makeText(this, if (success) "Inserted" else "Failed", Toast.LENGTH_SHORT).show()
+       }
+ 
+       btnUpdate.setOnClickListener {
+           val success = db.updateData(
+               etId.text.toString().toInt(),
+               etName.text.toString(),
+               etMarks.text.toString().toInt()
+           )
+           Toast.makeText(this, if (success) "Updated" else "Failed", Toast.LENGTH_SHORT).show()
+       }
+ 
+       btnDelete.setOnClickListener {
+           val success = db.deleteData(etId.text.toString().toInt())
+           Toast.makeText(this, if (success) "Deleted" else "Failed", Toast.LENGTH_SHORT).show()
+       }
+ 
+       btnView.setOnClickListener {
+           val data = db.getAllData()
+           AlertDialog.Builder(this)
+               .setTitle("Student Records")
+               .setMessage(data)
+               .setPositiveButton("OK", null)
+               .show()
+       }
+   }
+}
+ 
